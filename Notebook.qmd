@@ -1,0 +1,17 @@
+---
+title: "Notebook"
+format: html
+editor: visual
+---
+
+## Main Goal
+
+-Run a genome scan for all the loci within a chromosome without the h2lmm scan function.
+
+-allRNA has all the haplotypes and the expression data that has been cleaned and normalized
+
+### 9/11/24 - Meeting with Teresa Project and Goals
+
+Got the miqtl function to work so I have a reference of what the actual general output of what I'm doing is going to look like. Meeting with WV in 2 days to talk more about the project and what steps I should be at for the next week. -Personal goal; have a understanding of what the genome scan is and how it's working. -Get a manual version working and plotted -Write a loop to iterate over the mutliple loci
+
+Reasons the pvalues are different than the miQTL: the model ran in the manual mode is using lm while miQTL is most likley using an extreme value distribution. This is going to be a more accurate way to account for p values because the distribution of the data will be modeled more accurately
