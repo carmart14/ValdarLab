@@ -1,0 +1,108 @@
+---
+title: "miQTL"
+format: html
+editor: visual
+---
+
+## miQTL
+
+sparcc data used to simulate phenotypes from a mulitpartent population (DSPR / CC) sparc cache repo is needed to ensure the simulated data is representing the CC
+
+```{r}
+
+#General setup and package installation
+
+remotes::install_github("gkeele/miqtl")
+devtools::install_github("gkeele/sparcc")
+install.packages("data.table")
+library("sparcc")
+library("miqtl")
+
+```
+
+Goal: run a genome scan of chrom 19 , transcript Cyp2c39
+
+```{r}
+# 
+genomecache <- ("~/ValdarLab/segments_happy_format_mm10")
+allRNA <- data.table::fread(file = "../ValdarLab/allRNA.txt")
+
+# format needed to run the genome scan
+reader <- DiploprobReader(dataDir = genomecache)
+
+#accessing the functions and seeing what is in Reader 
+
+reader$getFounders()
+
+#running a genome scan on one locus
+
+#create a df that has the transcript values we need and the strains associated
+
+data <- data.frame("Y" = allRNA$Cyp2c39, "Strain" = allRNA$STRAIN)
+
+#running an example miQTL (full example on github) 
+
+# need to create a scan model, tell it the strains
+
+# h2lmm = heritability 2, linear mixed model
+# data = the dataframe we've made with the Cyp2c39 and Strains
+# geno.ID and pheno.Id are 
+
+scan <- miqtl::scan.h2lmm(genomecache = genomecache, 
+                    data = data, 
+                    pheno.id = "Strain", 
+                    geno.id = "Strain",
+                    formula = Y ~ 1,
+                    return.allele.effects = TRUE)
+
+miqtl::genome.plotter.whole(list(scan))
+
+#pvals for the model run compared to the null
+miqtl::genome.plotter.chr(scan, chr = 19)
+
+
+miqtl::allele.plotter.region(scan.object = scan, chr = 19)
+
+
+```
+
+# Now doing the scan without the function
+
+1. Get the first locus at chrom 19
+
+```{r}
+locus <- reader$getFirstLocus(chrom = 19)
+```
+
+2.get haplotype at chrom  19
+```{r}
+locus_matrix <- reader$getLocusMatrix(locus = locus, subjects = allRNA$STRAIN, model = "additive")
+```
+
+
+3.fit a model
+
+```{r}
+fit <- lm(data$Y ~ 1+locus_matrix )
+fit0 <- lm(data$Y ~ 1 )
+```
+
+
+Compare results of self-tool with the function for sanity
+
+run anova for fit with and without matrix model. get pvalue and compare it with the 
+
+```{r}
+anova(fit, fit0)
+pval <- anova(fit,fit0)$`Pr(>F)`[2]
+
+# now to compare to the scan value we found before
+scan$p.value[locus]
+
+# sanity check, make sure the previous sig points are still showing as sig in the manual version
+# can replace locus with locus_sig and then re-run. The new pvalue should be hella sig
+locus_sig <- miqtl::grab.locus.from.scan(scan.object = scan)
+
+```
+
+Once the model is run for all loci on chrom 19, save a matrix of pvalues, log10 pvalues etc. Then we can map the differenes between the run numbers and the null.
