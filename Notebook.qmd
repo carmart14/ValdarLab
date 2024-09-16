@@ -10,6 +10,13 @@ editor: visual
 
 -allRNA has all the haplotypes and the expression data that has been cleaned and normalized
 
+### 9/13/2024
+
+One on one with Valdar, getting the bigs of the code worked out. Loop is "working" but the main iterater is the wrong thing, so I'll need to change it so the loci is the part that's changing, not the strain. Also there should be a new genome matrix everytime so that will add to the results and help them make sense. 
+
+Met with Teresa and got new ways to get the different loops running. Not working yet but gonna let myself struggle for a bit on that before I ask for more help. The general idea is to have the code take the locus and replace it within the while loop, run a lm on that and then store the pvalues for each run until it reaches the end of the loci to track. General notes are on the tablet, have these transposed and clean the code at home. 
+
+
 ### 9/11/24 - Meeting with Teresa Project and Goals
 
 Got the miqtl function to work so I have a reference of what the actual general output of what I'm doing is going to look like. Meeting with WV in 2 days to talk more about the project and what steps I should be at for the next week. -Personal goal; have a understanding of what the genome scan is and how it's working. -Get a manual version working and plotted -Write a loop to iterate over the mutliple loci

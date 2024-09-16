@@ -20,6 +20,7 @@ install.packages("data.table")
 library("sparcc")
 library("miqtl")
 library(tidyverse)
+library(dplyr)
 
 ```
 
@@ -125,34 +126,67 @@ locus <- reader$getFirstLocus(chrom = 19 )
 locus_matrix <- reader$getLocusMatrix(locus = locus, subjects = allRNA$STRAIN, model = "additive")
 
 
-```
 
+anova(model2, fit0)
+pval2 <- anova(model2,fit0)$`Pr(>F)`[2]
+
+```
 
 
 ```{r}
 
 
+locus <- reader$getFirstLocus(chrom = 19)
 
-sigs <- tibble(
-  "locus" = numeric(length = length(locus_matrix)),
-  "intercept" = numeric(length = length(locus_matrix))
-)
-
-
-for (ii in 1:length(locus_matrix)) {
-  locus <- reader$getFirstLocus(chrom = 19)
-  locus_matrix <- reader$getLocusMatrix(locus = locus, subjects = allRNA$STRAIN, model = "additive")
-  model <- lm( Y ~ 1 + locus_matrix, data = general)
+while(locus != (reader$getLastLocus(chrom = 19))){
   
-  sigs[ii, "intercept"] <- model$coefficients[1:9]
+  locus_matrix <- reader$getLocusMatrix(locus = locus[ii], subjects = allRNA$STRAIN, model = "additive")
+  model4 <- lm(locus ~ 1 + locus_matrix, data = allRNA[-1])
+  locus <- reader$getNextMarker
   
 }
 
 
 
 
+
 ```
 
+Testing with more than one transcription factor for expression data in the loop
+
+```{r}
+
+# FIX ME 
+
+multi_g <- data.frame(allRNA[,1:4])
+
+
+sigRNA <- tibble(
+  "locus" = numeric(length = length(allRNA$STRAIN)),
+  "intercept" = numeric(length = length(allRNA$STRAIN)),
+  "strain" = character(length = length(allRNA$STRAIN)),
+  "pval" = numeric(length = length(allRNA$STRAIN))
+)
+
+
+#changed this to have all loci on chrom 19, not just the initial JAX...
+
+for (ii in 1:length(multi_g[-1])){
+  locus[ii] <- reader$getLoci(chrom = 19)
+  locus_matrix <- reader$getLocusMatrix(locus = locus[ii], subjects = multi_g$STRAIN, model = "additive")
+  model3 <- lm(locus ~ 1 + locus_matrix, data = multi_g)
+  
+  sum_model3 <- summary(model3)
+  
+}
+
+
+ex_data <- multi_g[,2:4][ii]
+ex_data <- unique(ex_data)
+
+#ex_data isnt clocking the strain data so the loop cant see what is what. 
+
+```
 
 
 
