@@ -2,3 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+
+*.txt
+*\data
+*segments_happy_format_mm10/

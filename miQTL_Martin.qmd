@@ -3,7 +3,7 @@ title: "miQTL"
 format: html
 editor: visual
 editor_options: 
-  chunk_output_type: console
+chunk_output_type: console
 ---
 
 ## miQTL
@@ -125,8 +125,7 @@ locus <- reader$getFirstLocus(chrom = 19 )
 
 locus_matrix <- reader$getLocusMatrix(locus = locus, subjects = allRNA$STRAIN, model = "additive")
 
-
-
+# comparing the results to the null
 anova(model2, fit0)
 pval2 <- anova(model2,fit0)$`Pr(>F)`[2]
 
@@ -135,56 +134,59 @@ pval2 <- anova(model2,fit0)$`Pr(>F)`[2]
 
 ```{r}
 
+#tibble to store the anova comparison for the 2 fit models in the loop
+sigRNA <- tibble(
+  "locus" = character(length = length(loci)),
+  "anova_pval" = numeric(length = length(loci))
+)
+
+# renamed the old fit models to fit the data we're working with
+
+fit0 <- lm(allRNA$Cyp2c39 ~ 1, data = allRNA)
+loci <- reader$getLoci(chrom = 19)
+
+# for-loop made with Valdar; looping through each loci on the 19th chrom. 
+for (ii in 1:length(loci)){
+  print(loci[ii])
+  locus_matrix <- reader$getLocusMatrix(locus = loci[ii], subjects = allRNA$STRAIN, model = "additive")
+  #print(head(locus_matrix, n = 10))
+  fit1 <- lm(allRNA$Cyp2c39 ~ 1 + locus_matrix, data = allRNA)
+  sum_model <- summary(fit1)
+  result <- anova(fit0, fit1)
+  #print(sum_model)
+  #print(result)
+  
+  sigRNA[ii, "anova_pval"] <- anova(fit1, fit0)$`Pr(>F)`[2]
+  sigRNA[ii, "locus"] <- print(loci[ii])
+  
+}
+
+
+
 
 locus <- reader$getFirstLocus(chrom = 19)
 
 while(locus != (reader$getLastLocus(chrom = 19))){
+  loci1[ii] <- reader$getLoci(chrom = 19)
+  locus_matrix <- reader$getLocusMatrix(locus = loci1, subjects = allRNA$STRAIN, model = "additive")
+  model4 <- lm(allRNA$Cyp2c39 ~ 1 + locus_matrix, data = allRNA[-1])
+  sum_model4 <- summary(model4)
   
-  locus_matrix <- reader$getLocusMatrix(locus = locus[ii], subjects = allRNA$STRAIN, model = "additive")
-  model4 <- lm(locus ~ 1 + locus_matrix, data = allRNA[-1])
-  locus <- reader$getNextMarker
+  locus<- reader$getNextMarker
   
-}
-
-
-
-
-
-```
-
-Testing with more than one transcription factor for expression data in the loop
-
-```{r}
-
-# FIX ME 
-
-multi_g <- data.frame(allRNA[,1:4])
-
-
-sigRNA <- tibble(
-  "locus" = numeric(length = length(allRNA$STRAIN)),
-  "intercept" = numeric(length = length(allRNA$STRAIN)),
-  "strain" = character(length = length(allRNA$STRAIN)),
-  "pval" = numeric(length = length(allRNA$STRAIN))
-)
-
-
-#changed this to have all loci on chrom 19, not just the initial JAX...
-
-for (ii in 1:length(multi_g[-1])){
-  locus[ii] <- reader$getLoci(chrom = 19)
-  locus_matrix <- reader$getLocusMatrix(locus = locus[ii], subjects = multi_g$STRAIN, model = "additive")
-  model3 <- lm(locus ~ 1 + locus_matrix, data = multi_g)
+  coeff <- return(model4$coefficients)
   
-  sum_model3 <- summary(model3)
+  anova(model4, fit0)
+  
+  sigRNA[ii, "intercept"] <- sum_model4$coefficients[1]
+  sigRNA[ii, "pval"] <- sum_model4$coefficients[4,1]
+  sigRNA[ii, "anova_pval"] <- anova(model4, fit0)$`Pr(>F)`[1]
+  sigRNA[ii, "locus"] <- locus
+
   
 }
 
 
-ex_data <- multi_g[,2:4][ii]
-ex_data <- unique(ex_data)
-
-#ex_data isnt clocking the strain data so the loop cant see what is what. 
 
 ```
 

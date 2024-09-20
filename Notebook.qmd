@@ -10,9 +10,13 @@ editor: visual
 
 -allRNA has all the haplotypes and the expression data that has been cleaned and normalized
 
+### 9/20 2024
+
+1-on-1 with Valdar and got the loop working for what it's meant to do. Itterate through the loci all across the chromosome, and then comparing that lm to the null lm. That data is stored in sigRNA. Also talked about how to more generally think as a computational person and write what the code is doing line by line. Start really small and keep going. Now that the data is stored in sigRNA, we can move to the next phase and make some plots and expand on strains etc. Also updated the git.ignore. 
+
 ### 9/13/2024
 
-One on one with Valdar, getting the bigs of the code worked out. Loop is "working" but the main iterater is the wrong thing, so I'll need to change it so the loci is the part that's changing, not the strain. Also there should be a new genome matrix everytime so that will add to the results and help them make sense. 
+One on one with Valdar, getting the bugs of the code worked out. Loop is "working" but the main iterater is the wrong thing, so I'll need to change it so the loci is the part that's changing, not the strain. Also there should be a new genome matrix everytime so that will add to the results and help them make sense. 
 
 Met with Teresa and got new ways to get the different loops running. Not working yet but gonna let myself struggle for a bit on that before I ask for more help. The general idea is to have the code take the locus and replace it within the while loop, run a lm on that and then store the pvalues for each run until it reaches the end of the loci to track. General notes are on the tablet, have these transposed and clean the code at home. 
 
