@@ -10,6 +10,10 @@ editor: visual
 
 -allRNA has all the haplotypes and the expression data that has been cleaned and normalized
 
+### 9/27/ 2024 
+
+
+
 ### 9/20 2024
 
 1-on-1 with Valdar and got the loop working for what it's meant to do. Itterate through the loci all across the chromosome, and then comparing that lm to the null lm. That data is stored in sigRNA. Also talked about how to more generally think as a computational person and write what the code is doing line by line. Start really small and keep going. Now that the data is stored in sigRNA, we can move to the next phase and make some plots and expand on strains etc. Also updated the git.ignore. 
