@@ -34,24 +34,9 @@ allRNA <- data.table::fread(file = "../ValdarLab/allRNA.txt")
 # format needed to run the genome scan
 reader <- DiploprobReader(dataDir = genomecache)
 
-#accessing the functions and seeing what is in Reader 
-
-reader$getFounders()
-
-#running a genome scan on one locus
-
-#create a df that has the transcript values we need and the strains associated
-
 data <- data.frame("Y" = allRNA$Cyp2c39, "Strain" = allRNA$STRAIN)
 
-#running an example miQTL (full example on github) 
-
-# need to create a scan model, tell it the strains
-
 # h2lmm = heritability 2, linear mixed model
-# data = the dataframe we've made with the Cyp2c39 and Strains
-# geno.ID and pheno.Id are 
-
 scan <- miqtl::scan.h2lmm(genomecache = genomecache, 
                     data = data, 
                     pheno.id = "Strain", 
@@ -61,9 +46,7 @@ scan <- miqtl::scan.h2lmm(genomecache = genomecache,
 
 miqtl::genome.plotter.whole(list(scan))
 
-#pvals for the model run compared to the null
 miqtl::genome.plotter.chr(scan, chr = 19)
-
 
 miqtl::allele.plotter.region(scan.object = scan, chr = 19)
 
@@ -76,60 +59,24 @@ miqtl::allele.plotter.region(scan.object = scan, chr = 19)
 
 ```{r}
 locus <- reader$getFirstLocus(chrom = 19)
-```
 
-2.get haplotype at chrom  19
-```{r}
 locus_matrix <- reader$getLocusMatrix(locus = locus, subjects = allRNA$STRAIN, model = "additive")
-```
 
-
-3.fit a model
-
-```{r}
 fit <- lm(data$Y ~ 1+locus_matrix )
 fit0 <- lm(data$Y ~ 1 )
-```
 
-
-Compare results of self-tool with the function for sanity
-
-run anova for fit with and without matrix model. get pvalue and compare it with the pval from the scan funtion
-
-```{r}
 anova(fit, fit0)
 pval <- anova(fit,fit0)$`Pr(>F)`[2]
 
-# now to compare to the scan value we found before
 scan$p.value[locus]
 
 # sanity check, make sure the previous sig points are still showing as sig in the manual version
 # can replace locus with locus_sig and then re-run. The new pvalue should be hella sig
+
 locus_sig <- miqtl::grab.locus.from.scan(scan.object = scan)
 
 ```
 
-Once the model is run for all loci on chrom 19, save a matrix of pvalues, log10 pvalues etc. Then we can map the differenes between the run numbers and the null.
-
-
-```{r}
-
-general <- data.frame("Y_Cyp" = allRNA$Cyp2c39, "Strain" = allRNA$STRAIN)
-
-# assigning area if interest to the first locus on chromosome 19
-
-# need to find something to iterate over all the locus on chrom 19
-locus <- reader$getFirstLocus(chrom = 19 )
-
-# 2.get haplotype at chrom  19
-
-locus_matrix <- reader$getLocusMatrix(locus = locus, subjects = allRNA$STRAIN, model = "additive")
-
-# comparing the results to the null
-anova(model2, fit0)
-pval2 <- anova(model2,fit0)$`Pr(>F)`[2]
-
-```
 
 
 ```{r}
@@ -137,10 +84,11 @@ pval2 <- anova(model2,fit0)$`Pr(>F)`[2]
 #tibble to store the anova comparison for the 2 fit models in the loop
 sigRNA <- tibble(
   "locus" = character(length = length(loci)),
-  "anova_pval" = numeric(length = length(loci))
+  "anova_pval" = numeric(length = length(loci)),
+  "begin" = numeric(length = length(loci)),
+  "end" = numeric(length = length(loci)),
 )
 
-# renamed the old fit models to fit the data we're working with
 
 ## get locus range in reader for each locus in the loop. add that to the sigRNA and then re-plot
 
@@ -151,15 +99,14 @@ loci <- reader$getLoci(chrom = 19)
 for (ii in 1:length(loci)){
   print(loci[ii])
   locus_matrix <- reader$getLocusMatrix(locus = loci[ii], subjects = allRNA$STRAIN, model = "additive")
-  #print(head(locus_matrix, n = 10))
   fit1 <- lm(allRNA$Cyp2c39 ~ 1 + locus_matrix, data = allRNA)
   sum_model <- summary(fit1)
   result <- anova(fit0, fit1)
-  #print(sum_model)
-  #print(result)
   
   sigRNA[ii, "anova_pval"] <- anova(fit1, fit0)$`Pr(>F)`[2]
   sigRNA[ii, "locus"] <- print(loci[ii])
+  sigRNA[ii, "begin"] <- reader$getLocusRange(loci = loci[ii], scale = "Mb")[1]
+  sigRNA[ii, "end"] <- reader$getLocusRange(loci = loci[ii], scale = "Mb")[2]
   
   
 }
@@ -167,30 +114,29 @@ for (ii in 1:length(loci)){
 -----------------------------------------------------------------------------------
 
 
-#tibble to store the anova comparison for the 2 fit models in the loop
 sigRNA_ABC <- tibble(
   "locus" = character(length = length(loci)),
-  "anova_pval" = numeric(length = length(loci))
+  "anova_pval" = numeric(length = length(loci)),
+  "begin" = numeric(length = length(loci)),
+  "end" = numeric(length = length(loci))
 )
 
-# renamed the old fit models to fit the data we're working with
 
 fit0 <- lm(allRNA$Abcf1 ~ 1, data = allRNA)
 loci <- reader$getLoci(chrom = 19)
 
-# for-loop made with Valdar; looping through each loci on the 19th chrom. 
+
 for (ii in 1:length(loci)){
   print(loci[ii])
   locus_matrix <- reader$getLocusMatrix(locus = loci[ii], subjects = allRNA$STRAIN, model = "additive")
-  #print(head(locus_matrix, n = 10))
   fit1 <- lm(allRNA$Abcf1 ~ 1 + locus_matrix, data = allRNA)
   sum_model <- summary(fit1)
   result <- anova(fit0, fit1)
-  #print(sum_model)
-  #print(result)
   
   sigRNA_ABC[ii, "anova_pval"] <- anova(fit1, fit0)$`Pr(>F)`[2]
   sigRNA_ABC[ii, "locus"] <- print(loci[ii])
+  sigRNA_ABC[ii, "begin"] <- reader$getLocusRange(loci = loci[ii], scale = "Mb")[1]
+  sigRNA_ABC[ii, "end"] <- reader$getLocusRange(loci = loci[ii], scale = "Mb")[2]
   
 }
 
@@ -204,52 +150,39 @@ for (ii in 1:length(loci)){
 
 ```{r}
 
-# generate a number for each locus, this will be scaled later 
-sigRNA_test <- sigRNA %>% 
+
+sigRNA <- sigRNA %>% 
   mutate(locus_number = seq(243, by = 1, from = 1 ),
          log_p_cyp = -log10(anova_pval))
+sigRNA |> 
+  ggplot(aes(begin, log_p_cyp))+
+  geom_line(color = "red")+
+  labs(title = "y ~ 1+ Locus_Matrix", 
+       x = "Position(Mb)",
+       y = expression("-logP"[10]))+
+  theme_minimal()
 
 
 # same as above but for the ABC data
-sigRNA_ABC <- sigRNA_ABC %>% 
+sigRNA_ABC <- sigRNA_ABC |> 
   mutate(locus_number = seq(243, by = 1, from = 1 ),
          log_p_ABC = -log10(anova_pval))
 
 
-#graphing the -logpval like the genome::scan function       
-sigRNA_test |>
-  ggplot(aes(locus_number, log_p_cyp ))+
-  geom_line(color = "red")+
-  scale_x_continuous(n.breaks = 6, )
+merged_df <- merge(sigRNA, sigRNA_ABC, by = "locus")
 
-# scsaling 
-
-## merging the graphs so i can have an overlay for the different transcripts TEST
-
-merged_df <- merge(sigRNA_test, sigRNA_ABC, by = "locus")
-
-merged_df |>
-  ggplot(aes(locus_number.x, log_p_cyp))+
-         geom_line(color = "red")+
-  geom_line(aes(locus_number.x, log_p_ABC), color = "blue")+
-  geom_vline(xintercept = 127, col = "purple", lwd = 0.5)+
-  scale_color_manual(name = "Transcripts", values = c("Cyp_c23" = "red", "ABC" = "blue"))+
-  xlab("Locus Number")+
-  ylab("-Log10 P-value")
-  #abline(h = 0, v = 139, col = "black", lwd = 3)
-  
+ggplot(merged_df) +
+  geom_line(aes(x = begin.x, y = log_p_cyp, color = "Cyp_c23"), size = 0.7) +
+  geom_line(aes(x = begin.y, y = log_p_ABC, color = "ABC"), size = 0.7) +
+  geom_vline(xintercept = 38.2, col = "black", lwd = 0.5, linetype = "dashed") +
+  scale_color_manual(name = "Transcripts", values = c("Cyp_c23" = "red", "ABC" = "blue")) +
+  xlab("Position (Mb)") +
+  ylab("-Log10 P-value") +
+  theme_minimal()
 
 
-### 
-
-Blue = Abcf1
-
-Red = CYP_c23
-
-####
   
 # Finding the most significant locus for the red line (cypc23)
-
 min_locus <- which.min(merged_df$anova_pval.x)
 print(merged_df[139,])
 
@@ -265,16 +198,6 @@ fit2 <- lm(allRNA$Cyp2c39 ~ -1 + locus_matrix, data = allRNA)
 fit1df <- fit1$coefficients
 fit2df <- fit2$coefficients
 
-# Find the maximum length
-
-max_length <- max(length(fit1df), length(fit2df))
-
-# Pad the shorter vector with NA
-fit1df <- c(fit1df, rep(NA, max_length - length(fit1df)))
-fit2df <- c(fit2df, rep(NA, max_length - length(fit2df)))
-
-model_fits <- as.data.frame(fit1df, fit2df)
-
 # running into problems with the vectors being the wrong length so skipping and going it the manual way
 
 model_1 <-c( 0.3158466,0.5264983,  -1.4554181,  0.4314216, 0.4164416, -0.5145771, -0.7076691, -0.8455184, NA)
@@ -282,11 +205,6 @@ model_2 <- c( NA, 0.8423450,-1.1395714, 0.7472682,  0.7322882, -0.1987305,  -0.3
 haplotypes <- c("intercept", "A.J", "C57B1.6J","X129SvlmJ", "NOD.LtJ", "NZO.HlLtJ", "CAST.EiJ", "PWK.PhJ", "WSB.EiJ")
 
 model_fits <- data.frame(intercept_fit = model_1, no_intercept_fit = model_2, betas = haplotypes)
-
-
-# Visual for how different fit1 and fit 2 are 
-reader$getLocusRange("UNC30286399", scale = "Mb")
-reader$getLocusRange(loci = loci, scale = "Mb")
 
 model_fits <- model_fits %>% 
   mutate(Position_MB = seq(9, by = 1, from = 1 ))
@@ -299,7 +217,6 @@ model_fits |>
 # model comparison
 anova(fit1, fit2)
 
-locus_matrix <- reader$getLocusMatrix(locus = locus_sig, subjects = allRNA$STRAIN, model = "additive")
 
 
 
@@ -313,11 +230,6 @@ devtools::install_github("wesleycrouse/TIMBR", build_vignettes=T)
 library(TIMBR)
 vignette("use_TIMBR")
 
-results1 <-  TIMBR(y = exp, prior.M = list(model.type = "fixed", M.IDs = c("1", "2","3","4","5","6","7","8")), 
-      prior.D = prior.D
-)
-
-
 #prior info on the number of models we have aka nothing 
 # itll be an 8xK matrix, but now were looking at one allele so our K = 1
 
@@ -326,71 +238,160 @@ exp <- allRNA$Cyp2c39
 
 #changing the format so we can edit in the correct format instead of converting later
 prior.D <- mcv.data$prior.D
-# setting the probaility matrix we've created
+# setting the probability matrix we've created
 prior.D$P <- mm_timber
-#prior.D[[A]] is a basic probability matrix for hetergenirty,  homos and hets 
+#prior.D[[A]] is a basic probability matrix for heterogeneity,  homos and hets 
 
-#note
+# saying there are no linked alleles, 8 different options
 prior.M = list(model.type = "fixed", M.IDs = "1", "2","3","4","5","6","7","8")
 
 # prior prob matrix for the distribution, similar to the past haplos but full creates diplos 
 mm_timber <- reader$getLocusMatrix(locus = locus_sig, subjects = allRNA$STRAIN, model = "full")
 
 
+#running timber
+results1 <-  TIMBR(y = exp, prior.M = list(model.type = "fixed", M.IDs = c("1", "2","3","4","5","6","7","8")), 
+      prior.D = prior.D
+)
+
 # results are going to update the priors/ probabilities of that general matrix we put forth in the prior D Matrix
 results1$p.D.given.y
 
-# tester from the github. 
-results <- TIMBR(mcv.data$y, mcv.data$prior.D, mcv.data$prior.M$crp)
 
-colMeans(results$post.hap.effects)
+colMeans(results1$post.hap.effects)
 
 TIMBR.plot.haplotypes(results1)
-TIMBR.plot.circos(results1)
+as.matrix(head(results1$p.M.given.y, 10))
 
+
+
+_______________
+
+# adding allele pairs, we see shared phenotype and haplos based on the pic above. tri-allele check
+prior.M.biallelic <- list(model.type="fixed", M.IDs = "0,1,0,0,2,2,2,2")
+results.biallelic <- TIMBR(exp, prior.D, prior.M.biallelic, verbose=F)
+as.matrix(head(results.biallelic$p.M.given.y, 10))
+
+results.biallelic$post.hap.effects[1:10,]
+
+#overlay single allele with tri-alleleic.
+TIMBR.plot.haplotypes(results.biallelic, TIMBR.output.bkgrd = results1)
+
+
+#trying a uniform distribution
+prior.M.uniform <- results1$prior.M$uniform
+prior.M.uniform <- list(model.type="fixed", M.IDs = "0,0,0,0,0,0,0,0")
+results.uniform <- TIMBR(exp, prior.D, prior.M.uniform, verbose=F)
+
+TIMBR.plot.haplotypes(results.uniform, TIMBR.output.bkgrd = results1)
+
+_________________
+
+#Modeling the allele series with a Chinese restaurant process prior distribution
+
+#filling sub-setted values withing prior.M 
+results1$prior.M$model.type <- "crp"
+results1$prior.M$prior.alpha.type <- "gamma"
+results1$prior.M$prior.alpha.shape <- 1
+results1$prior.M$prior.alpha.rate <- 2.33
+
+#replacing prior.M with new values
+prior.M.crp <- results1$prior.M
+str(prior.M.crp)
+
+
+results.crp <- TIMBR(exp, prior.D, prior.M.crp, verbose = F)
+as.matrix(head(results.crp$p.M.given.y, 10))
+
+TIMBR.plot.haplotypes(results.crp, TIMBR.output.bkgrd = results1)
 
 ```
 
 Next Step : Visualizing prior distribution of the # of alleles
 
 
-See: TIMBR Vignettes
+See: TIMBR Vignettes : USE TIMBR
+
+Data General: 
+Control mice to compare to a drugged mice group. Characterizing the baseline genetic variation for drug metabolizing proteins in the livers of the CC. 
+
+Next Step: 
+pulling out the posterior odds of the models to see what model is being preferred
+ie, which model fits better, 2haps 3haps 8haps etc.
+
+
+#Computing the prior distribution with Ewens’s sampling formula
+```{r}
+
+library(ape)
+trees <- results.crp$trees
+plot.phylo(trees[[1]])
+#error, found fewer than 2 tips in the tree
+
+
+#prior.alpha <- list(type="gamma", shape=1, rate=2.333415)
+#prior.M.tree.1 <- ewenss.calc(trees[[1]], prior.alpha)
+#str(prior.M.tree.1)
+
+
+#trees is an object that results1 doesn't have so this wont work
+prior.M.tree <- results1$prior.M$tree
+str(prior.M.tree)
 
 
 
+```
 
 
-
-
-
+#Visualizing the prior distribution of number of alleles
 
 
 ```{r}
 
-# ignore
-locus <- reader$getFirstLocus(chrom = 19)
 
-while(locus != (reader$getLastLocus(chrom = 19))){
-  loci1[ii] <- reader$getLoci(chrom = 19)
-  locus_matrix <- reader$getLocusMatrix(locus = loci1, subjects = allRNA$STRAIN, model = "additive")
-  model4 <- lm(allRNA$Cyp2c39 ~ 1 + locus_matrix, data = allRNA[-1])
-  sum_model4 <- summary(model4)
-  
-  locus<- reader$getNextMarker
-  
-  coeff <- return(model4$coefficients)
-  
-  anova(model4, fit0)
-  
-  sigRNA[ii, "intercept"] <- sum_model4$coefficients[1]
-  sigRNA[ii, "pval"] <- sum_model4$coefficients[4,1]
-  sigRNA[ii, "anova_pval"] <- anova(model4, fit0)$`Pr(>F)`[1]
-  sigRNA[ii, "locus"] <- locus
+prior.alpha <- list(type="gamma", shape=1, rate=2.333415)
+# if wanting to compare the other models etc. 
+# prior.alpha <- list(type="fixed", alpha=1)
 
-  
-}
+prior.M.crp.list <- ewenss.calc(8, prior.alpha)
+number.alleles <- sapply(prior.M.crp.list$M.IDs, 
+                         function(x){max(as.numeric(unlist(strsplit(x, split=","))))+1})
+prior.number.alleles.uniform <- table(number.alleles) / length(number.alleles)
+prior.number.alleles.crp <- exp(tapply(prior.M.crp.list$ln.probs, number.alleles, 
+                                       matrixStats::logSumExp))
+
+plot(1:8, prior.number.alleles.crp, type="l", lty=5, col="white", 
+     ylim=c(0,1), ylab="Prior Probability", xlab="Number of Alleles", 
+     main="Prior Distribution of Alleles")
+lines(1:8, prior.number.alleles.crp, lty=5, col="orange")
+points(1:8, prior.number.alleles.crp, pch=22, bg="orange")
+lines(1:8, prior.number.alleles.uniform, lty=5, col="darkcyan")
+points(1:8, prior.number.alleles.uniform, pch=22, bg="darkcyan")
+
+legend(1, legend=c("Uniform", "CRP"), col=c("darkcyan", "orange"), lty=5)
+
+
+
+
+
 
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
