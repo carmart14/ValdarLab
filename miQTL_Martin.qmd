@@ -51,6 +51,8 @@ miqtl::genome.plotter.chr(scan, chr = 19)
 miqtl::allele.plotter.region(scan.object = scan, chr = 19)
 
 
+miqtl:: plot_locus.effect.from.scan(scan.object = scan, locus = "UNC30286399") 
+
 ```
 
 # Now doing the scan without the function
@@ -156,8 +158,9 @@ sigRNA <- sigRNA %>%
          log_p_cyp = -log10(anova_pval))
 sigRNA |> 
   ggplot(aes(begin, log_p_cyp))+
-  geom_line(color = "red")+
-  labs(title = "y ~ 1+ Locus_Matrix", 
+  geom_line(color = "black")+
+  geom_vline(xintercept = 38.203233, col="red", linetype="longdash", size =1)+
+  labs(title = "y ~ 1 + Locus Matrix", 
        x = "Position(Mb)",
        y = expression("-logP"[10]))+
   theme_minimal()
@@ -273,15 +276,19 @@ results.biallelic <- TIMBR(exp, prior.D, prior.M.biallelic, verbose=F)
 as.matrix(head(results.biallelic$p.M.given.y, 10))
 
 results.biallelic$post.hap.effects[1:10,]
+colMeans(results.biallelic$post.hap.effects)
+colMeans(results.biallelic$prior.D$P)
 
 #overlay single allele with tri-alleleic.
 TIMBR.plot.haplotypes(results.biallelic, TIMBR.output.bkgrd = results1)
-
+________________
 
 #trying a uniform distribution
-prior.M.uniform <- results1$prior.M$uniform
-prior.M.uniform <- list(model.type="fixed", M.IDs = "0,0,0,0,0,0,0,0")
+prior.M.uniform <- list(model.type = "uniform", M.IDs = "0,0,0,0,0,0,0,0")
 results.uniform <- TIMBR(exp, prior.D, prior.M.uniform, verbose=F)
+as.matrix(head(results.uniform$p.M.given.y, 10))
+
+
 
 TIMBR.plot.haplotypes(results.uniform, TIMBR.output.bkgrd = results1)
 
@@ -304,6 +311,17 @@ results.crp <- TIMBR(exp, prior.D, prior.M.crp, verbose = F)
 as.matrix(head(results.crp$p.M.given.y, 10))
 
 TIMBR.plot.haplotypes(results.crp, TIMBR.output.bkgrd = results1)
+colMeans(results.crp$post.hap.effects)
+results.crp$post.hap.effects[1:10,]
+
+
+
+# using the mcv.data priors liat instead of the fixed effect  
+result_test <- TIMBR(exp, prior.D = prior.D, prior.M = mcv.data$prior.M$list, verbose = F)  
+as.matrix(head(result_test$p.M.given.y, 10))
+TIMBR.plot.haplotypes(result_test, TIMBR.output.bkgrd = results1)
+
+
 
 ```
 
@@ -324,9 +342,12 @@ ie, which model fits better, 2haps 3haps 8haps etc.
 ```{r}
 
 library(ape)
-trees <- results.crp$trees
+
+# not sure how to use, check back later
+trees <- mcv.data$trees
 plot.phylo(trees[[1]])
-#error, found fewer than 2 tips in the tree
+
+
 
 
 #prior.alpha <- list(type="gamma", shape=1, rate=2.333415)
@@ -360,6 +381,13 @@ prior.number.alleles.uniform <- table(number.alleles) / length(number.alleles)
 prior.number.alleles.crp <- exp(tapply(prior.M.crp.list$ln.probs, number.alleles, 
                                        matrixStats::logSumExp))
 
+#check back, not sure if this is right
+prior.M.bi.list <- ewenss.calc(8, prior.alpha = list(type="fixed", alpha=1))
+prior.number.alleles.bi <- exp(tapply(prior.M.bi.list$ln.probs, number.alleles, 
+                                       matrixStats::logSumExp))
+
+# Prior Allele Freq Plots
+
 plot(1:8, prior.number.alleles.crp, type="l", lty=5, col="white", 
      ylim=c(0,1), ylab="Prior Probability", xlab="Number of Alleles", 
      main="Prior Distribution of Alleles")
@@ -367,8 +395,68 @@ lines(1:8, prior.number.alleles.crp, lty=5, col="orange")
 points(1:8, prior.number.alleles.crp, pch=22, bg="orange")
 lines(1:8, prior.number.alleles.uniform, lty=5, col="darkcyan")
 points(1:8, prior.number.alleles.uniform, pch=22, bg="darkcyan")
+lines(1:8, prior.number.alleles.bi, lty = 5, col = "purple")
+points(1:8, prior.number.alleles.bi, pch=22, bg="purple")
 
-legend(1, legend=c("Uniform", "CRP"), col=c("darkcyan", "orange"), lty=5)
+legend(1, legend=c("Uniform", "CRP","Tri"), col=c("darkcyan", "orange", "purple"), lty=5)
+
+
+#Posterior Plots
+
+plot(1:8,results.crp$p.K.given.y, type = "l", lty=5, col="white",
+  ylim=c(0,1), ylab = "Posterior Probability", xlab= "Number of Alleles",
+  main="Posterior Distribution of Alleles")+
+  axis(2, at= seq(0, 0.8, by=0.2))+
+lines(1:8, results.crp$p.K.given.y, lty=5, col="orange")
+points(1:8, results.crp$p.K.given.y, pch=22, bg="orange")
+lines(1:8, result_test$p.K.given.y, lty=5, col="darkcyan")
+points(1:8, result_test$p.K.given.y, pch=22, bg="darkcyan")
+lines(2:8, results.uniform$p.K.given.y, lty=5, col="purple")
+points(2:8, results.uniform$p.K.given.y, pch=22, bg="purple")
+legend(1, legend = c("CRP", "Test_List", "Uniform"), col = c("orange", "darkcyan", "purple"), lty=5)
+
+
+# Approximating Bayes Factors for Alternative Prior Distributions
+TIMBR.approx(results.crp, "merge")
+
+
+```
+
+
+
+#bmediatR analysis
+
+
+```{r}
+devtools::install_github("wesleycrouse/bmediatR", build_vignettes = TRUE)
+library(bmediatR)
+library(qtl2)
+source("bmediatr_manuscript_support_functions.R") # need to have downloaded to find source location
+
+vignette("bmediatR_in_DO")
+
+# CC colors
+cc_col <- as.character(qtl2::CCcolors)
+
+## Downloaded data from the Tutorial manually, the code was running into problems
+
+
+# Load DO genoprobs, map, and kinship matrix 
+load(unzip("vignette_data.RData.zip"))
+
+# Clean up
+file.remove("vignette_data.RData.zip")
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -376,12 +464,6 @@ legend(1, legend=c("Uniform", "CRP"), col=c("darkcyan", "orange"), lty=5)
 
 
 ```
-
-
-
-
-
-
 
 
 

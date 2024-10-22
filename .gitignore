@@ -7,3 +7,9 @@
 *\data
 *segments_happy_format_mm10/
 *.png
+*.svg
+*jpeg
+*.R
+*.RData
+*.zip
+*.gz
